@@ -3,13 +3,19 @@
 # Created: 3/14/22
 # Updated: 3/14/22
 
-# Simulate 32 years of catch data with 12 ages
-# Option 1: Multivariate lognormal catch-at-age
-# Option 2: Log normal catch, multinomial proportions
-# Option 3: Log normal catch, dirichlet multinomial proportions
-# Option 4: Log normal catch, logistic normal proportions
+# Simulate 32 years of "real" catch data with 12 ages
+# Simulate observed catch data using several obs error structure options
+# Fit observed catch data assuming several obs error structure options
+# Compare the fit to the real
+rm(list=ls())
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
-# Variables
+library(MASS)
+library(dmutate)
+library(emdbook)
+
+##################################### REAL DATA #####################################
+# Variables for real data
 years = 32
 ages = 12
 R = 1500000 # Recruitment
@@ -28,22 +34,72 @@ for(i in 1:ages)
   C[i] = N[i]*((FFull*Sel[i])/Z[i])*(1-exp(-Z[i]))
 }
 
-#Calculate observed catch
-ObsC=matrix(0,nrow=years,ncol=ages)
+# The true total catch, on regular or log scale, and the true proportions
+LogC=log(C)
+TotC = sum(C)
+TotLogC =  log(TotC)
+PropC = C/TotC
 
-# Option 1: Multivariate lognormal catch-at-age
-var = rep(0,ages)
-rho = 0.3
+##################################### SIMULATED DATA #####################################
 
-for(i in 1:years)
-{
-  ObsC[i,] = 0
-}
+# Load all the functions to simulate catch data
+source("catchsimfunctions.R")
+#####################################
+#Multivariate lognormal catch-at-age (sd for log-normal, rho)
+ObsCatage = simMVLN(0.06,0.3)
 
-# Option 2: Log normal catch, multinomial proportions
+#Deconstruct as necessary:
+ObsC=rowSums(ObsCatage)
+ObsPropC=ObsCatage/ObsC
+
+#####################################
+#Log normal catch (sd for total catch)
+ObsC = simLN(0.06676)
+
+#Multinomial proportion-at-age (effective sample size)
+ObsPropC = simMN(500)
+#Dirichlet multinomial proportion-at-age (effective sample size)
+ObsPropC = simDMN()
+#Logistic Normal proportion-at-age (effective sample size)
+ObsPropC = simLogisN()
+
+#Reconstruct as necessary:
+ObsCatage = ObsC*ObsPropC
 
 
-# Option 3: Log normal catch, dirichlet multinomial proportions
+##################################### ESTIMATED DATA #####################################
 
+# Load all the functions to fit catch data
+source("catchfitfunctions.R")
 
-# Option 4: Log normal catch, logistic normal proportions
+#Multivariate lognormal catch-at-age (sd for log-normal, rho)
+EstCatAge = fitMVLN(0.06,0.5)
+#Deconstruct as necessary:
+EstC=rowSums(EstCatage)
+EstPropC=EstCatage/EstC
+
+#####################################
+#Log normal catch (sd for total catch)
+EstC = fitLN(0.06676)
+
+#Multinomial proportion-at-age (effective sample size)
+EstPropC = fitMN(500)
+#Dirichlet multinomial proportion-at-age (effective sample size)
+EstPropC = fitDMN()
+#Logistic Normal proportion-at-age (effective sample size)
+EstPropC = fitLogisN()
+
+#Reconstruct as necessary:
+EstCatage = EstC*EstPropC
+
+##################################### COMPARISON #####################################
+
+mean(EstCatAge-C)/C
+hist(EstCatAge-C)
+
+mean(EstPropC-PropC)
+hist(EstPropC-PropC)
+
+mean(EstC-TotC)
+hist(EstC-TotC)
+
