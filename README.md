@@ -1,6 +1,6 @@
 # altSSSAMlikelihood
 
-# A simple simulation/estimation procedure to check if a stock assessment model can estimate the catch and proportions-at-age, or catch-at-age when the underlying distribution is "correct" or "incorrect."
+# A simulation/estimation procedure to test if a stock assessment model can estimate the catch and proportions-at-age, or catch-at-age under an array of assumed distributions of the observed data
 
 Options for assumed distribution:
 1. Multivariate Log Normal (Catch-at-age)
