@@ -58,37 +58,88 @@ fitLN<- function(LNSD)
 ##################################################################################
 fitMN<- function(MNESS)
 {
-  #Either one produces Observed Catch on regular scale
-  NLLfunction<-function(param,ObsPropC,MNESS)
+  ObsPropCadj = ObsPropC
+  for(i in 1:years)
   {
-    probs<-exp(param+1)
-    probs[12]=exp(1)
+    ObsPropCadj[i,] = (ObsPropC[i,]+0.001)/sum(ObsPropC[i,]+0.001)
+  }
+  #Either one produces Observed Catch on regular scale
+  NLLfunction<-function(param,ObsPropCadj,MNESS)
+  {
+    probs<-exp(param)
+    probs[ages]=exp(mean(param))
     probs <- probs/sum(probs)
     
     MNESS <- MNESS
     NLLsum <- 0
-    for(i in 1:nrow(ObsPropC))
+    for(i in 1:nrow(ObsPropCadj))
     {
-      NLLsum = NLLsum - dmultinom((ObsPropC[i,]*MNESS),prob=probs,log=T)
+      NLLsum = NLLsum - dmultinom((ObsPropCadj[i,]*MNESS),prob=probs,log=T)
     }
     return(NLLsum)
 
   }
   #Set initial parameters:
   # param = PropC[1:11]
-  param = rep((1/12),11)
-  EstC<-nlm(NLLfunction,param,ObsPropC=ObsPropC,MNESS=MNESS,hessian=T,print.level=1,iterlim=10000)
+  param = rep(0.1,(ages-1))
   
-  estimates = exp(EstC$estimate+1)
-  estimates[12] = exp(1)
+  EstC<-nlm(NLLfunction,param,ObsPropCadj=ObsPropCadj,MNESS=MNESS,hessian=T,print.level=1,iterlim=1000)
+  
+  estimates = exp(EstC$estimate)
+  estimates[ages] = exp(mean(param))
   estimates <- estimates/sum(estimates)
   return(estimates)
 }
 
 #Dirichlet multinomial proportions at age
 ##################################################################################
-fitDMN<- function(LNSD)
-{}
+fitDMN<- function(ISS)
+{
+  NLLfunction<-function(param,ObsPropC,ISS)
+  {
+    
+    probs<-exp(param[1:ages])
+    probs[ages]=exp(mean(param[1:ages]))
+    probs <- probs/sum(probs)
+    
+    theta <- exp(param[ages])/(1+exp(param[ages]))
+    
+    ISS <- ISS
+    NLLsum <- 0
+    for(i in 1:nrow(ObsPropC))
+    {
+      NLLsum = NLLsum - lgamma(ISS*theta)
+      NLLsum = NLLsum + lgamma(ISS+ISS*theta)
+      
+      for(j in 1:ncol(ObsPropC))
+      {
+        # if(ObsPropC>0)
+        # {
+          NLLsum = NLLsum - lgamma(ISS*(ObsPropC[i,j]+0.001)+theta*ISS*probs[j])
+          NLLsum = NLLsum + lgamma(theta*ISS*probs[j])
+        # }
+      }
+    }
+    return(NLLsum)
+    
+  }
+  #Set initial parameters:
+  # param = PropC[1:11]
+  param = rep(0.1,(ages-1))
+  param[ages] = 0
+  
+  EstC<-nlm(NLLfunction,param,ObsPropC=ObsPropC,ISS=ISS,hessian=T,print.level=1,iterlim=1000)
+  
+  estimates = exp(EstC$estimate[1:(ages-1)])
+  estimates[ages] = exp(mean(EstC$estimate[1:(ages-1)]))
+  estimates <- estimates/sum(estimates)
+  
+  esttheta <- exp(EstC$estimate[ages])/(1+exp(EstC$estimate[ages]))
+  
+  estimatesandtheta = c(estimates,esttheta)
+  return(estimatesandtheta)
+  
+}
 
 #Logistic normal proportions at age
 ##################################################################################

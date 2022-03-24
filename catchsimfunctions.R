@@ -47,10 +47,21 @@ simMN<- function(MNESS)
 
 #Dirichlet multinomial proportions at age
 ##################################################################################
-simDMN<- function()
+simDMN<- function(ISS,theta)
 {
-  ObsPropC = 0
-  return(ObsPropC)
+  ISS = ISS
+  theta = theta
+  
+  beta = ISS*theta
+  alpha = beta*PropC
+  
+  p = rdirichlet(n=years, alpha=alpha)
+  x=matrix(nrow=years,ncol=ages)
+  for(i in 1:years)
+  {
+    x[i,] = t(rmultinom(1,ISS,p[i,])/ISS)
+  }
+  return(x)
 }
 
 #Logistic normal proportions at age
